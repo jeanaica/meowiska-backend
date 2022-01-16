@@ -1,0 +1,57 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+  	function signedIn() {
+      return request.auth.uid != null;
+    }
+    
+    function isSelf(userId) {
+      return request.auth.uid == userId;
+    }
+    
+  	function isManager() {
+      return get(/databases/$(database)/documents/profile/$(request.auth.uid)).data.role == "Manager";
+   	}
+    
+    function isAdmin() {
+      return get(/databases/$(database)/documents/profile/$(request.auth.uid)).data.role == "Admin";
+   	}
+    
+    match /scholars/{document} {
+      allow read: if true;
+      allow create: if signedIn() && (isManager() || isAdmin());
+      allow update, delete: if signedIn() && isAdmin();
+    }
+    
+    match /users/{userId} {
+      allow read: if signedIn() && isSelf(userId);
+      allow create: if signedIn() && (isManager() || isAdmin());
+      allow update: if true;
+      allow delete: if signedIn() && isAdmin();
+    }
+    
+    match /profile/{userId} {
+     allow read: if signedIn();
+     allow create, delete: if isManager() || isAdmin();
+     allow update: if signedIn() && isSelf(userId) || isAdmin();
+    }
+    
+    match /claims/{userId} {
+     allow read: if signedIn();
+     allow create, delete: if isManager() || isAdmin();
+     allow update: if signedIn() && isSelf(userId) || isAdmin();
+    }
+    
+    match /slp/{document} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if signedIn() && isAdmin();
+    }
+    
+    match /pvp/{document} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if signedIn() && isAdmin();
+    }
+  }
+}
